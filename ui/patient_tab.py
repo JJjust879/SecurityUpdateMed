@@ -26,29 +26,41 @@ class PatientProfileTab:
 
         # Frame for profile
         self.frame = customtkinter.CTkFrame(
-            self.tab, fg_color="#ffffff", height=430, width=580
+            self.tab, fg_color="#ffffff", height=430, width=400
         )
         self.frame.place(relx=0.01, rely=0.13)
 
         self.pp_label = customtkinter.CTkLabel(self.frame, text="")
         self.pp_label.place(relx=0.20, rely=0.04)
-
-        self.labels = {
-            "name": customtkinter.CTkLabel(self.frame, text="Name:", text_color="#000000"),
-            "age": customtkinter.CTkLabel(self.frame, text="Age:", text_color="#000000"),
-            "gender": customtkinter.CTkLabel(self.frame, text="Gender:", text_color="#000000"),
-            "bday": customtkinter.CTkLabel(self.frame, text="Birthday:", text_color="#000000"),
-            "address": customtkinter.CTkLabel(self.frame, text="Address:", text_color="#000000"),
-            "cno": customtkinter.CTkLabel(self.frame, text="Cel.No#:", text_color="#000000"),
+        
+        self.label_info = {
+            "name": ("Name", 0.35),
+            "age": ("Age", 0.45),
+            "gender": ("Gender", 0.55),
+            "bday": ("Birthday", 0.65),
+            "address": ("Address", 0.75),
+            "cno": ("Cel.No#", 0.85)
         }
 
-        positions = [0.35, 0.45, 0.55, 0.65, 0.75, 0.9]
-        for label, rel_y in zip(self.labels.values(), positions):
+        self.labels = {}
+        for key, (label_text, rel_y) in self.label_info.items():
+            label = customtkinter.CTkLabel(
+                self.frame,
+                text=f"{label_text}:",
+                text_color="#000000",
+            )
             label.place(relx=0.10, rely=rel_y)
+            self.labels[key] = label
 
     def load_patient_ids(self):
         patient_ids = self.patient_repo.get_all_patient_ids()
         self.findp.configure(values=patient_ids)
+        
+    def _update_label(self, key, value):
+        """Update a label safely if it exists."""
+        if key in self.labels:
+            display_name = self.label_info[key][0]
+            self.labels[key].configure(text=f"{display_name}: {value if value else 'N/A'}")
 
     def show_patient_profile(self):
         pid = self.findp.get()
@@ -60,13 +72,19 @@ class PatientProfileTab:
         if not patient_info:
             show_messagebox("Info", "No Data Found\nPlease Check Your ID")
             return
-
-        # Update UI
-        image_path = f"Images\\{'female' if patient_info.gender == "Female" else "male"}.png"
+        
+        image_path = f"Images\\{'female' if patient_info.gender == 'Female' else 'male'}.png"
         self.pp_label.configure(image=load_image(image_path, size=(120, 120)))
-        self.labels["name"].configure(text=f"Name: {patient_info.name}")
-        self.labels["age"].configure(text=f"Age: {patient_info.age}")
-        self.labels["bday"].configure(text=f"Birthday: {patient_info.birthdate}")
-        self.labels["gender"].configure(text=f"Gender: {patient_info.gender}")
-        self.labels["address"].configure(text=f"Address: {patient_info.address}")
-        self.labels["cno"].configure(text=f"Cel.No #: {patient_info.cellphone_num}")
+
+        # Dynamically update all text labels
+        data_map = {
+            "name": patient_info.name,
+            "age": patient_info.age,
+            "gender": patient_info.gender,
+            "bday": patient_info.birthdate,
+            "address": patient_info.address,
+            "cno": patient_info.cellphone_num,
+        }
+
+        for key, value in data_map.items():
+            self._update_label(key, value)

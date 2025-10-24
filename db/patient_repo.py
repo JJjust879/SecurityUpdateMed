@@ -5,7 +5,7 @@ class PatientRepo:
         self.db = db
 
     def get_all_patient_ids(self) -> list[str]:
-        query = "SELECT patientid FROM patient_profile"
+        query = "SELECT patientid FROM patient_profile ORDER BY patientid ASC"
         result = self.db.fetch_all(query)
         return [row[0] for row in result]
 

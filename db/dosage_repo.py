@@ -1,5 +1,5 @@
 from models.dosage import Dosage
-
+from dataclasses import astuple
 
 class DosageRepo:
     def __init__(self, db):
@@ -28,14 +28,14 @@ class DosageRepo:
             dosages.append(dosage)
         return dosages
     
-    def insert_dosage(self, patient_id, medicine, dosage, dosagetype, timesper, date):
+    def insert_dosage(self, patient_id: str, new_dosage: Dosage):
         query = """
                 INSERT INTO patient_dosage
                 (patientid, illness, medicine, dosage, dosagetype, timesper, daysoftheweek, 
                 frequency, time, date)
-                VALUES (?, 'General', ?, ?, ?, 'Day', 'N/A', 'N/A', ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """
-        self.db.execute(query, (patient_id, medicine, dosage, dosagetype, timesper, date))
+        self.db.execute(query, (patient_id, *astuple(new_dosage)))
         
     def update_dosage(self, patient_id, medicine, new_dosage, new_dosagetype):
         query = """
@@ -43,3 +43,9 @@ class DosageRepo:
             AND medicine = ?
         """
         self.db.execute(query, (new_dosage, new_dosagetype, patient_id, medicine))
+    
+    def delete_dosage(self, patient_id, medicine):
+        query = """
+            DELETE FROM patient_dosage WHERE patientid = ? AND medicine = ?
+        """
+        self.db.execute(query, (patient_id, medicine))
