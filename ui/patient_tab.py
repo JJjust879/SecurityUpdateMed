@@ -1,4 +1,4 @@
-import customtkinter
+from customtkinter import CTkButton, CTkComboBox, CTkLabel, CTkFrame
 from db.patient_repo import PatientRepo
 from models.patient import Patient
 from utils.helpers import load_image, show_messagebox
@@ -13,11 +13,11 @@ class PatientProfileTab:
 
     def setup_ui(self):
         # Search bar
-        self.findp = customtkinter.CTkComboBox(self.tab, width=160, font=("", 16))
+        self.findp = CTkComboBox(self.tab, width=160, font=("", 16))
         self.findp.place(relx=0.01, rely=0.035)
         self.findp.set("Select Patient ID")
         
-        self.searchp = customtkinter.CTkButton(
+        self.searchp = CTkButton(
             self.tab, text="Search", text_color="#000000",
             hover_color="#FFFFFF", fg_color='#f5f3e6', width=50,
             command=self.show_patient_profile
@@ -25,12 +25,12 @@ class PatientProfileTab:
         self.searchp.place(relx=0.245, rely=0.035)
 
         # Frame for profile
-        self.frame = customtkinter.CTkFrame(
+        self.frame = CTkFrame(
             self.tab, fg_color="#ffffff", height=430, width=400
         )
         self.frame.place(relx=0.01, rely=0.13)
 
-        self.pp_label = customtkinter.CTkLabel(self.frame, text="")
+        self.pp_label = CTkLabel(self.frame, text="")
         self.pp_label.place(relx=0.20, rely=0.04)
         
         self.label_info = {
@@ -44,7 +44,7 @@ class PatientProfileTab:
 
         self.labels = {}
         for key, (label_text, rel_y) in self.label_info.items():
-            label = customtkinter.CTkLabel(
+            label = CTkLabel(
                 self.frame,
                 text=f"{label_text}:",
                 text_color="#000000",

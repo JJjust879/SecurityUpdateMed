@@ -8,15 +8,35 @@ from db.medicine_repo import MedicineRepo
 from models.dosage import Dosage
 from utils.helpers import show_messagebox
 
+
+def validate_medicine_input(illness, med, dosage, dosage_type, time, date):
+    if not all([illness, med, dosage, dosage_type, time, date]):
+        return "Please fill out all fields."
+    if not dosage.isdigit():
+        return "Dosage must be a numeric value."
+    return None
+
+
+def validate_dosage_range(medicine_repo, med_name, dosage_value):
+    dosage_range = medicine_repo.get_min_max_dosage(med_name)
+    if not dosage_range:
+        return f"Medicine '{med_name}' not found in database."
+    min_dosage, max_dosage = dosage_range
+    if not (min_dosage <= dosage_value <= max_dosage):
+        return f"Dosage for '{med_name}' must be between {min_dosage} and {max_dosage}."
+    return None
+
+
+def get_selected_days(days_vars, times_per):
+    if times_per != "Week":
+        return "N/A"
+    selected = [day for day, var in days_vars.items() if var.get() == "1"]
+    return " ".join(selected) if selected else "N/A"
+
+
 class AddMedicinePopup(CTkToplevel):
     def __init__(self, parent, selected_pid, db, refresh_callback):
-        """
-        parent: parent window (the tab or main window)
-        selected_pid: patient ID to link the medicine to
-        refresh_callback: function to refresh the prescription list after adding
-        """
         super().__init__(parent)
-
         self.selected_pid = selected_pid
         self.dosage_repo = DosageRepo(db)
         self.medicine_repo = MedicineRepo(db)
@@ -24,10 +44,8 @@ class AddMedicinePopup(CTkToplevel):
 
         self.title("Add New Prescription")
         self.geometry("450x450")
-
         self.setup_ui()
 
-    # --- UI Setup ---
     def setup_ui(self):
         container = CTkFrame(self, fg_color="transparent")
         container.pack(padx=20, pady=15, fill="both", expand=True)
@@ -49,7 +67,7 @@ class AddMedicinePopup(CTkToplevel):
         )
         self.med_box.grid(row=1, column=1, pady=5)
 
-        # --- Dosage (numeric + unit) ---
+        # --- Dosage ---
         CTkLabel(container, text="Dosage:").grid(row=2, column=0, sticky="e", padx=5, pady=5)
         dosage_frame = CTkFrame(container, fg_color="transparent")
         dosage_frame.grid(row=2, column=1, sticky="w", padx=5, pady=5)
@@ -73,19 +91,19 @@ class AddMedicinePopup(CTkToplevel):
             width=200,
             values=["Day", "Week"],
             state="readonly",
-            command=self.on_timesper_change  # triggers toggle
+            command=self.on_timesper_change
         )
         self.timesper_box.set("Day")
         self.timesper_box.grid(row=3, column=1, sticky="w", padx=5, pady=5)
 
-        # --- Days of week checkboxes (hidden by default) ---
+        # --- Days of week ---
         self.days_frame = CTkFrame(container, fg_color="transparent")
         self.days_frame.grid(row=4, column=1, sticky="w", padx=5, pady=5)
-        self.days_frame.grid_remove()  # hide initially
+        self.days_frame.grid_remove()
 
         self.days_vars = {}
-        days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
-        for i, day in enumerate(days):
+        days_week = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        for i, day in enumerate(days_week):
             var = StringVar(value="0")
             chk = CTkCheckBox(self.days_frame, text=day, variable=var, onvalue="1", offvalue="0")
             chk.grid(row=i // 3, column=i % 3, padx=5, pady=3, sticky="w")
@@ -118,18 +136,14 @@ class AddMedicinePopup(CTkToplevel):
         CTkButton(self, text="Add", fg_color="#6dc993", command=self.add_to_db).pack(pady=15)
 
     def on_medicine_selected(self, selected_med_name):
-        """Auto-fill dosage info when a medicine is selected"""
-        med_info = self.medicine_repo.get_medicine_by_name(selected_med_name)
+        med_info = self.medicine_repo.get_medicine_dosage_by_name(selected_med_name)
         if med_info:
-            default_dosage, default_dtype = med_info[2], med_info[5]
-
+            default_dosage, dosage_type = med_info
             self.dosage_entry.delete(0, "end")
             self.dosage_entry.insert(0, str(default_dosage))
-            self.dtype_box.set(default_dtype)
-    
-    # --- Logic ---
+            self.dtype_box.set(dosage_type)
+
     def on_timesper_change(self, value):
-        """Show or hide the days of week checkboxes when 'Week' is selected."""
         if value == "Week":
             self.days_frame.grid()
         else:
@@ -137,7 +151,7 @@ class AddMedicinePopup(CTkToplevel):
 
     def add_to_db(self):
         illness = self.illness_entry.get().strip()
-        med = self.med_entry.get().strip()
+        med = self.med_box.get().strip()
         dosage = self.dosage_entry.get().strip()
         dosage_type = self.dtype_box.get().strip()
         times_per = self.timesper_box.get().strip()
@@ -145,50 +159,29 @@ class AddMedicinePopup(CTkToplevel):
         time = self.time_entry.get().strip()
         date = self.date_picker.get_date().strftime("%m/%d/%Y")
 
-        if not all([illness, med, dosage, dosage_type, time, date]):
-            show_messagebox("Error", "Please fill out all fields.")
+        # --- Validation ---
+        err = validate_medicine_input(illness, med, dosage, dosage_type, time, date)
+        if err:
+            show_messagebox("Error", err)
             return
 
-        if not dosage.isdigit():
-            show_messagebox("Error", "Dosage must be a numeric value.")
-            return
-        
-        dosage_range = self.medicine_repo.get_min_max_dosage(med)
-        if not dosage_range:
-            show_messagebox("Error", f"Medicine '{med}' not found in database.")
-            return
-        
-        min_dosage, max_dosage = dosage_range
         dosage_value = float(dosage)
-        if not (min_dosage <= dosage_value <= max_dosage):
-            show_messagebox(
-                "Error",
-                f"Dosage for '{med}' must be between {min_dosage} and {max_dosage}."
-            )
+        err = validate_dosage_range(self.medicine_repo, med, dosage_value)
+        if err:
+            show_messagebox("Error", err)
             return
 
-        # Collect selected days if applicable
-        if times_per == "Week":
-            selected_days = [day for day, var in self.days_vars.items() if var.get() == "1"]
-            days_str = " ".join(selected_days) if selected_days else "N/A"
-        else:
-            days_str = "N/A"
+        days_str = get_selected_days(self.days_vars, times_per)
 
+        # --- Save ---
         new_dosage = Dosage(
-            illness=illness,
-            medication=med,
-            dosage=dosage,
-            dosage_type=dosage_type,
-            times_per=times_per,
-            days_of_week=days_str,
-            frequency=frequency,
-            time=time,
-            date=date
+            illness=illness, medication=med, dosage=dosage,
+            dosage_type=dosage_type, times_per=times_per, days_of_week=days_str,
+            frequency=frequency, time=time, date=date
         )
 
         self.dosage_repo.insert_dosage(self.selected_pid, new_dosage)
         show_messagebox("Success", f"{med} added successfully.")
         self.destroy()
-
         if callable(self.refresh_callback):
             self.refresh_callback()
