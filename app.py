@@ -2,6 +2,7 @@ import customtkinter
 from db.db_manager import DatabaseManager
 from ui.patient_tab import PatientProfileTab
 from ui.prescription_tab import PrescriptionTab
+from ui.auth_frame import AuthFrame  # <-- import the login frame
 
 class VitalCareApp:
     def __init__(self, root):
@@ -19,7 +20,17 @@ class VitalCareApp:
         # Initialize Database
         self.db = DatabaseManager("db.db")
 
-        # Setup Tab View
+        # --- Initialize Login Page ---
+        self.auth_frame = AuthFrame(self.root, self.db, self.show_main_app)
+        self.auth_frame.pack(fill="both", expand=True)
+
+        # Main app (hidden initially)
+        self.tabview = None
+
+    def show_main_app(self):
+        """Destroy login screen and show main interface"""
+        self.auth_frame.pack_forget()
+
         self.tabview = customtkinter.CTkTabview(
             self.root, height=550, width=750, fg_color="#87CEEB"
         )

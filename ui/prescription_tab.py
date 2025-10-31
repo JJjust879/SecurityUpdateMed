@@ -68,7 +68,9 @@ class PrescriptionTab:
             ("Refresh", 0.5, "#87CEEB", self.load_prescriptions)
         ]
         for text, relx, color, cmd in buttons:
-            CTkButton(self.tab, text=text, width=90, fg_color=color, command=cmd).place(relx=relx, rely=0.65)
+            CTkButton(self.tab, text=text, width=90, fg_color=color, command=cmd).place(
+                relx=relx, rely=0.65
+            )
 
         # Load data
         self.load_patient_ids()
