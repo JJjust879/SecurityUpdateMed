@@ -4,6 +4,9 @@ from tkinter import messagebox
 from db.user_repo import UserRepo
 from utils.auth_validation import validate_username, validate_password
 
+# For login activity log
+from utils.logger import log_event
+
 class AuthFrame(customtkinter.CTkFrame):
     def __init__(self, master, db, on_login_success):
         super().__init__(master, fg_color="#87CEEB")
@@ -61,11 +64,67 @@ class LoginFrame(customtkinter.CTkFrame):
             messagebox.showwarning("Missing Info", "Please enter both username and password.")
             return
 
+        # Before checking the password,
+        # verify if this user is currently locked from logging in or not
+        allowed, wait_s = self.user_repo.can_attempt_login(username)
+
+        # If they are locked, display the message accordingly
+        if not allowed:
+
+            # Record the lock getting locked
+            log_event("ACCOUNT_LOCKED", username)
+
+            # Convert seconds to minutes
+            mins = wait_s // 60
+
+            # Remaining seconds after minutes
+            secs = wait_s % 60
+
+            # Display message
+            messagebox.showerror("Locked", f"Too many failed attempts.\nTry again in {mins}m {secs}s.")
+            return
+
+        # If they are not locked and the user logs in correctly
         if self.user_repo.verify_user(username, password):
+            # Reset the two columns (failed_attempts, locked_until)
+            # for this user in the users table to default values.
+            self.user_repo.record_successful_login(username)
+
+            # Get this user's role and pass it forward
+            role = self.user_repo.get_user_role(username) or "staff"
+
+            # Log user successful login
+            log_event("LOGIN_SUCCESS", username)
+            # Doing that will make the app
+            # write a line shown below in the security_log.txt file:
+            # 2025-11-05 03:27:10 | LOGIN_SUCCESS | user=alex
+
+            # Display a message
             messagebox.showinfo("Success", f"Welcome, {username}!")
-            self.on_login_success()
+            self.on_login_success(username, role)
+
+        # If they are not locked but the user logs in incorrectly
         else:
-            messagebox.showerror("Error", "Invalid username or password.")
+            # Record the user trying to login with an account that does not exist
+            if not self.user_repo.get_user(username):
+                log_event("LOGIN_FAILED_UNKNOWN_USER", username)
+
+            # Record the user failure to login
+            else:
+                log_event("LOGIN_FAILED", username)
+
+            # Increase failed attempts by one
+            # And maybe lock it if it reached max allowed login
+            self.user_repo.record_failed_login(username)
+            failed, _ = self.user_repo.get_lock_state(username)
+            remaining = max(self.user_repo.LOCK_THRESHOLD - failed, 0)
+
+            # Do something when remaining is equal to 0
+
+            # Display message accordingly
+            extra = f"\nAttempts left before lock: {remaining}" if remaining > 0 else ""
+            messagebox.showerror("Error", f"Invalid username or password.{extra}")
+
 
 
 # ------------------ REGISTER FRAME ------------------
@@ -133,6 +192,9 @@ class RegisterFrame(customtkinter.CTkFrame):
         # --- Add user ---
         success = self.user_repo.add_user(username, password)
         if success:
+            # Record user successful account creation
+            log_event("ACCOUNT_CREATED", username)
+
             messagebox.showinfo("Success", "Account created successfully! Please log in.")
             self.show_login()
         else:

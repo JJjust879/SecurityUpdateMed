@@ -1,5 +1,11 @@
 import re
 
+COMMON_PASSWORDS = {
+    "password", "123456", "12345678", "123456789", "qwerty", "abc123",
+    "111111", "letmein", "admin", "welcome", "passw0rd", "iloveyou",
+    "dragon", "sunshine", "princess", "football"
+}
+
 def validate_username(username: str) -> str | None:
     """Return an error message if invalid, else None."""
     if len(username) < 4:
@@ -14,6 +20,8 @@ def validate_password(password: str) -> str | None:
     """Return an error message if invalid, else None."""
     if len(password) < 8:
         return "Password must be at least 8 characters long."
+    if password.lower() in COMMON_PASSWORDS:
+        return "This password is too common. Please choose a stronger one."
     if not re.search(r"[A-Z]", password):
         return "Password must contain at least one uppercase letter."
     if not re.search(r"[a-z]", password):
