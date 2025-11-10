@@ -2,7 +2,9 @@ import customtkinter
 from db.db_manager import DatabaseManager
 from ui.patient_tab import PatientProfileTab
 from ui.prescription_tab import PrescriptionTab
-from ui.auth_frame import AuthFrame  # <-- import the login frame
+from ui.auth_frame import AuthFrame
+from ui.log_viewer_tab import LogViewerTab
+
 
 class VitalCareApp:
     def __init__(self, root):
@@ -27,15 +29,36 @@ class VitalCareApp:
         # Main app (hidden initially)
         self.tabview = None
 
-    def show_main_app(self):
-        """Destroy login screen and show main interface"""
+    def show_main_app(self, username, role):
+        """
+        Switch from the auth screen to the main UI.
+        RBAC: always show Patient/Prescription tabs; show Security Logs only for admin.
+        """
+        # Remember who is logged in and what their role is
+        self.current_user = username
+        self.current_role = role
+
+        # Hide the login/register frame
         self.auth_frame.pack_forget()
 
+        # Create the main tab view container
         self.tabview = customtkinter.CTkTabview(
             self.root, height=550, width=750, fg_color="#87CEEB"
         )
         self.tabview.pack(padx=10, pady=5)
 
-        # Tabs
+        # --- Tabs that everyone (staff + admin) can use ---
+        # These classes are already written to add their own tabs inside the tabview
         self.patient_tab = PatientProfileTab(self.tabview, self.db)
         self.prescription_tab = PrescriptionTab(self.tabview, self.db)
+
+        # --- Admin-only tab (RBAC) ---
+        # Only create and mount the Security Logs tab if this user is an admin.
+        if self.current_role == "admin":
+            # Make a new tab named "Security Logs"
+            self.tabview.add("Security Logs")
+
+            # Put our LogViewer frame inside that tab
+            self.log_viewer = LogViewerTab(self.tabview.tab("Security Logs"))
+            self.log_viewer.pack(fill="both", expand=True, padx=10, pady=10)
+
