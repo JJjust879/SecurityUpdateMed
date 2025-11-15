@@ -14,7 +14,7 @@ class AuthFrame(customtkinter.CTkFrame):
         self.on_login_success = on_login_success
 
         # Nested frames for switching
-        self.login_frame = LoginFrame(self, self.user_repo, self.show_register, 
+        self.login_frame = LoginFrame(self, self.user_repo, self.show_register,
                                       self.on_login_success)
         self.register_frame = RegisterFrame(self, self.user_repo, self.show_login)
 
@@ -41,11 +41,21 @@ class LoginFrame(customtkinter.CTkFrame):
         title = customtkinter.CTkLabel(self, text="VitalCare Login", font=("Arial", 24, "bold"))
         title.pack(pady=30)
 
-        self.username_entry = customtkinter.CTkEntry(self, placeholder_text="Username")
-        self.username_entry.pack(pady=10, ipadx=50, ipady=5)
+        # --- USERNAME ---
+        self.username_entry = customtkinter.CTkEntry(self, placeholder_text="Username", width=250)
+        self.username_entry.pack(pady=10, ipady=5)
 
-        self.password_entry = customtkinter.CTkEntry(self, placeholder_text="Password", show="•")
-        self.password_entry.pack(pady=10, ipadx=50, ipady=5)
+        # --- PASSWORD FIELD ---
+        self.password_entry = customtkinter.CTkEntry(
+            self, placeholder_text="Password", show="•", width=250
+        )
+        self.password_entry.pack(pady=(10, 0), ipady=5)
+
+        # --- SHOW BUTTON UNDER INPUT ---
+        self.show_btn = customtkinter.CTkButton(
+            self, text="Show", width=80, command=self.toggle_password
+        )
+        self.show_btn.pack(pady=(3, 10))
 
         login_btn = customtkinter.CTkButton(self, text="Login", command=self.login_user)
         login_btn.pack(pady=20)
@@ -55,6 +65,14 @@ class LoginFrame(customtkinter.CTkFrame):
             text_color="#0047AB", hover_color="#E0FFFF", command=self.show_register
         )
         register_link.pack(pady=5)
+
+    def toggle_password(self):
+        if self.password_entry.cget("show") == "•":
+            self.password_entry.configure(show="")
+            self.show_btn.configure(text="Hide")
+        else:
+            self.password_entry.configure(show="•")
+            self.show_btn.configure(text="Show")
 
     def login_user(self):
         username = self.username_entry.get().strip()
@@ -87,7 +105,6 @@ class LoginFrame(customtkinter.CTkFrame):
         # If they are not locked and the user logs in correctly
         if self.user_repo.verify_user(username, password):
             # Reset the two columns (failed_attempts, locked_until)
-            # for this user in the users table to default values.
             self.user_repo.record_successful_login(username)
 
             # Get this user's role and pass it forward
@@ -95,9 +112,6 @@ class LoginFrame(customtkinter.CTkFrame):
 
             # Log user successful login
             log_event("LOGIN_SUCCESS", username)
-            # Doing that will make the app
-            # write a line shown below in the security_log.txt file:
-            # 2025-11-05 03:27:10 | LOGIN_SUCCESS | user=alex
 
             # Display a message
             messagebox.showinfo("Success", f"Welcome, {username}!")
@@ -105,26 +119,17 @@ class LoginFrame(customtkinter.CTkFrame):
 
         # If they are not locked but the user logs in incorrectly
         else:
-            # Record the user trying to login with an account that does not exist
             if not self.user_repo.get_user(username):
                 log_event("LOGIN_FAILED_UNKNOWN_USER", username)
-
-            # Record the user failure to login
             else:
                 log_event("LOGIN_FAILED", username)
 
-            # Increase failed attempts by one
-            # And maybe lock it if it reached max allowed login
             self.user_repo.record_failed_login(username)
             failed, _ = self.user_repo.get_lock_state(username)
             remaining = max(self.user_repo.LOCK_THRESHOLD - failed, 0)
 
-            # Do something when remaining is equal to 0
-
-            # Display message accordingly
             extra = f"\nAttempts left before lock: {remaining}" if remaining > 0 else ""
             messagebox.showerror("Error", f"Invalid username or password.{extra}")
-
 
 
 # ------------------ REGISTER FRAME ------------------
@@ -138,14 +143,31 @@ class RegisterFrame(customtkinter.CTkFrame):
         title = customtkinter.CTkLabel(self, text="Create Account", font=("Arial", 24, "bold"))
         title.pack(pady=30)
 
-        self.username_entry = customtkinter.CTkEntry(self, placeholder_text="Username")
-        self.username_entry.pack(pady=10, ipadx=50, ipady=5)
+        # --- USERNAME ---
+        self.username_entry = customtkinter.CTkEntry(self, placeholder_text="Username", width=250)
+        self.username_entry.pack(pady=10, ipady=5)
 
-        self.password_entry = customtkinter.CTkEntry(self, placeholder_text="Password", show="•")
-        self.password_entry.pack(pady=10, ipadx=50, ipady=5)
+        # --- PASSWORD FIELD ---
+        self.password_entry = customtkinter.CTkEntry(
+            self, placeholder_text="Password", show="•", width=250
+        )
+        self.password_entry.pack(pady=(10, 0), ipady=5)
 
-        self.confirm_entry = customtkinter.CTkEntry(self, placeholder_text="Confirm Password", show="•")
-        self.confirm_entry.pack(pady=10, ipadx=50, ipady=5)
+        self.show_pw_btn = customtkinter.CTkButton(
+            self, text="Show", width=80, command=self.toggle_pw
+        )
+        self.show_pw_btn.pack(pady=(3, 10))
+
+        # --- CONFIRM PASSWORD FIELD ---
+        self.confirm_entry = customtkinter.CTkEntry(
+            self, placeholder_text="Confirm Password", show="•", width=250
+        )
+        self.confirm_entry.pack(pady=(10, 0), ipady=5)
+
+        self.show_confirm_btn = customtkinter.CTkButton(
+            self, text="Show", width=80, command=self.toggle_confirm
+        )
+        self.show_confirm_btn.pack(pady=(3, 10))
 
         hint_label = customtkinter.CTkLabel(
             self,
@@ -178,7 +200,6 @@ class RegisterFrame(customtkinter.CTkFrame):
             messagebox.showerror("Error", "Passwords do not match.")
             return
 
-        # Optional: Use validators if available
         username_error = validate_username(username)
         if username_error:
             messagebox.showerror("Invalid Username", username_error)
@@ -192,10 +213,27 @@ class RegisterFrame(customtkinter.CTkFrame):
         # --- Add user ---
         success = self.user_repo.add_user(username, password)
         if success:
-            # Record user successful account creation
             log_event("ACCOUNT_CREATED", username)
-
             messagebox.showinfo("Success", "Account created successfully! Please log in.")
             self.show_login()
         else:
             messagebox.showerror("Error", "Username already exists. Try a different one.")
+
+    def toggle_pw(self):
+        if self.password_entry.cget("show") == "•":
+            self.password_entry.configure(show="")
+            self.show_pw_btn.configure(text="Hide")
+        else:
+            self.password_entry.configure(show="•")
+            self.show_pw_btn.configure(text="Show")
+
+    def toggle_confirm(self):
+        if self.confirm_entry.cget("show") == "•":
+            self.confirm_entry.configure(show="")
+            self.show_confirm_btn.configure(text="Hide")
+        else:
+            self.confirm_entry.configure(show="•")
+            self.show_confirm_btn.configure(text="Show")
+
+
+
