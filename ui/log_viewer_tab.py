@@ -46,4 +46,4 @@ class LogViewerTab(customtkinter.CTkFrame):
     def open_in_editor(self):
         """Open the log file with the default editor (optional helper)."""
         if self.log_path.exists():
-            os.startfile(self.log_path)  # works on Windows
+            os.startfile(self.log_path)  # works on Windows # nosec B606 - safe: fixed path

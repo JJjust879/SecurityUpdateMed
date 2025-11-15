@@ -14,7 +14,10 @@ class UserRepo:
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'staff',
+            failed_attempts INTEGER NOT NULL DEFAULT 0,
+            locked_until INTEGER
         )
         """
         self.db.execute(query)

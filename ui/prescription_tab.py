@@ -129,7 +129,7 @@ class PrescriptionTab:
         med_name = self.tree.item(selected)["values"][0]
         confirm = CTkMessagebox(
             title="Confirm Delete",
-            message=f"Delete {med_name} from this patient's record?",
+            message=f"Delete {med_name} from this patient's record?", # nosec B608 - UI string, not SQL
             icon="warning",
             option_1="Yes", option_2="No"
         )

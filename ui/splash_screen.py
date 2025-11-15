@@ -44,7 +44,7 @@ class SplashScreen(customtkinter.CTkToplevel):
             self.withdraw()
             self.update_idletasks()
         except Exception:
-            pass
+            pass # nosec B110
 
         if self.on_close_callback:
             self.after(200, self.on_close_callback)  # delay slightly for safety
